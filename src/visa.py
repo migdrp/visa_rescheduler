@@ -6,7 +6,7 @@ import configparser
 import sys
 import traceback
 
-from loger import Logger
+from utils.loger import Logger
 from datetime import datetime
 
 from selenium import webdriver
