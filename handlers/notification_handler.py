@@ -2,9 +2,10 @@ import requests
 import sys
 import traceback
 
-from logging import Logger
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+
+from utils.logger import Logger
 from config.config_validation import SENDGRID_API_KEY, SENDGRID_EMAIL_SENDER, PUSHOVER_TOKEN, PUSHOVER_USER, SENDGRID_TARGET_EMAIL
 
 

@@ -1,11 +1,12 @@
 import ast
 import configparser
-from logging import Logger
+
+from utils.logger import Logger
 from utils.visa_utils import validate_embassies
 
 log = Logger('CONFIG VALIDATION')
 config = configparser.ConfigParser()
-config.read('../config.ini')
+config.read('./config.ini')
 
 
 # Personal Info:
@@ -61,3 +62,5 @@ if not PUSHOVER_TOKEN or not PUSHOVER_USER:
     log.error('Pushover notifications disabled. Please provide your Pueshover credentials.')
 
 # Puedes agregar más validaciones según sea necesario.
+
+

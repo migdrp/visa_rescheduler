@@ -3,24 +3,30 @@ import random
 import sys
 import traceback
 
-from utils import Logger
+from utils.logger import Logger
 from datetime import datetime
 
-from config.config_validation import ( USERNAME, PASSWORD, RETRY_TIME_L_BOUND, RETRY_TIME_U_BOUND, WORK_LIMIT_TIME, WORK_COOLDOWN_TIME, BAN_COOLDOWN_TIME, YOUR_EMBASSIES)
+from config.config_validation import USERNAME, PASSWORD, RETRY_TIME_L_BOUND, RETRY_TIME_U_BOUND, WORK_LIMIT_TIME, WORK_COOLDOWN_TIME, BAN_COOLDOWN_TIME, YOUR_EMBASSIES
 
 from handlers.notification_handler import send_notification
 from handlers.selenium_handler import start_driver
 
 log = Logger('VISA RESCHEDULER')
 
+log.debug('Reading your embassies...')
 # Time Section:
 minute = 60
 hour = 60 * minute
 
+log.debug('Reading your embassies...')
+log.debug('Reading your embassies...')
+time.sleep(3)
 
-
-
+log.debug('Starting selenium driver...')
+time.sleep(3)
 driver = start_driver()
+log.debug('Reading your embassies...')
+log.debug('Reading your embassies...')
 embassies = YOUR_EMBASSIES
 log.debug('Embassies: ', YOUR_EMBASSIES)
 

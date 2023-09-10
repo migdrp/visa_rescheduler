@@ -1,6 +1,6 @@
-from utils.embassy import *
+
 from utils.logger import Logger
-from config.config_validation import SCHEDULE_ID
+from utils.embassy import Embassies
 
 
 log = Logger('VISA UTILS')  
@@ -22,22 +22,22 @@ def get_login_url(emb:str):
 
 
 
-def get_appointment_url(emb:str): 
+def get_appointment_url(emb:str, SCHEDULE_ID:str): 
   VARS= get_embassy_vars(emb)
   URL_APPOINTMENT = f"https://ais.usvisa-info.com/{VARS['EMBASSY']}/niv/schedule/{SCHEDULE_ID}/appointment"
   return URL_APPOINTMENT
 
-def get_dates_url(emb:str):
+def get_dates_url(emb:str, SCHEDULE_ID:str):
   VARS= get_embassy_vars(emb)
   URL_DATES = f"https://ais.usvisa-info.com/{VARS['EMBASSY']}/niv/schedule/{SCHEDULE_ID}/appointment/days/{VARS['FACILITY_ID']}.json?appointments[expedite]=false"
   return URL_DATES
 
-def get_times_url(emb:str, date:str):
+def get_times_url(emb:str, date:str, SCHEDULE_ID:str):
   VARS= get_embassy_vars(emb)
   URL_TIMES = f"https://ais.usvisa-info.com/{VARS['EMBASSY']}/niv/schedule/{SCHEDULE_ID}/appointment/times/{VARS['FACILITY_ID']}.json?date={date}&appointments[expedite]=false"
   return URL_TIMES
 
-def get_logout_url(emb:str):
+def get_logout_url(emb:str, SCHEDULE_ID:str):
   VARS= get_embassy_vars(emb)
   URL_LOGOUT = f"https://ais.usvisa-info.com/{VARS['EMBASSY']}/niv/users/sign_out"
   return URL_LOGOUT

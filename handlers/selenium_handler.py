@@ -9,10 +9,9 @@ from selenium.webdriver.support.ui import WebDriverWait as Wait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
+
 from config.config_validation import LOCAL_USE, HUB_ADDRESS, STEP_TIME, SELENIUM_TIMEOUT, PERIOD_END, PERIOD_START
-
 from utils.visa_utils import get_login_url, get_appointment_url, get_dates_url, get_times_url, get_logout_url, get_embassy_vars
-
 from utils.logger import Logger
 
 log = Logger('SELENIUM HANDLER')  
