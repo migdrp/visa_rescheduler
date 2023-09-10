@@ -1,0 +1,50 @@
+from embassy import *
+from config.config_validation import SCHEDULE_ID
+
+
+def get_embassy_vars(emb:str):
+  return dict(  
+    EMBASSY = Embassies[emb][0],
+    FACILITY_ID = Embassies[emb][1],
+    REGEX_CONTINUE_BTN_TEXT = Embassies[emb][2]
+  )
+
+
+
+def get_login_url(emb:str): 
+  VARS= get_embassy_vars(emb)
+  URL_LOGIN = f"https://ais.usvisa-info.com/{VARS['EMBASSY']}/niv/users/sign_in"
+  return URL_LOGIN
+
+
+
+def get_appointment_url(emb:str): 
+  VARS= get_embassy_vars(emb)
+  URL_APPOINTMENT = f"https://ais.usvisa-info.com/{VARS['EMBASSY']}/niv/schedule/{SCHEDULE_ID}/appointment"
+  return URL_APPOINTMENT
+
+def get_dates_url(emb:str):
+  VARS= get_embassy_vars(emb)
+  URL_DATES = f"https://ais.usvisa-info.com/{VARS['EMBASSY']}/niv/schedule/{SCHEDULE_ID}/appointment/days/{VARS['FACILITY_ID']}.json?appointments[expedite]=false"
+  return URL_DATES
+
+def get_times_url(emb:str, date:str):
+  VARS= get_embassy_vars(emb)
+  URL_TIMES = f"https://ais.usvisa-info.com/{VARS['EMBASSY']}/niv/schedule/{SCHEDULE_ID}/appointment/times/{VARS['FACILITY_ID']}.json?date={date}&appointments[expedite]=false"
+  return URL_TIMES
+
+def get_logout_url(emb:str):
+  VARS= get_embassy_vars(emb)
+  URL_LOGOUT = f"https://ais.usvisa-info.com/{VARS['EMBASSY']}/niv/users/sign_out"
+  return URL_LOGOUT
+
+
+def validate_embassies(embassies:list):
+  """
+    Verifies that all the YOUR_EMBASSIES have the same EMBASSY param in the embbasies JSON.
+    It must be validated because the URLS must be in the same embassy that logins.
+  
+  """
+  for emb in embassies:
+    VARS = get_embassy_vars(emb)
+    

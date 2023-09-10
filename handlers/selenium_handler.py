@@ -1,9 +1,7 @@
-# Archivo: selenium_handler.py
-# Carpeta: /handlers
-
 import time
 import json
-import random
+import requests
+from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
@@ -11,18 +9,31 @@ from selenium.webdriver.support.ui import WebDriverWait as Wait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
-from config.config_validation import LOCAL_USE, HUB_ADDRESS
+from config.config_validation import LOCAL_USE, HUB_ADDRESS, STEP_TIME, SELENIUM_TIMEOUT, PERIOD_END, PERIOD_START
+
+from utils.visa_utils import get_login_url, get_appointment_url, get_dates_url, get_times_url, get_logout_url, get_embassy_vars
+
+from utils.loger import Logger
+
+log = Logger('SELENIUM HANDLER')  
 
 
-if LOCAL_USE:
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-else:
-    driver = webdriver.Remote(command_executor=HUB_ADDRESS, options=webdriver.ChromeOptions())
+JS_SCRIPT = ("var req = new XMLHttpRequest();"
+    f"req.open('GET', '%s', false);"
+    "req.setRequestHeader('Accept', 'application/json, text/javascript, */*; q=0.01');"
+    "req.setRequestHeader('X-Requested-With', 'XMLHttpRequest');"
+    f"req.setRequestHeader('Cookie', '_yatri_session=%s');"
+    "req.send(null);"
+    "return req.responseText;")
 
-    
 
-def auto_action(label, find_by, el_type, action, value, sleep_time=0):
-    print('\t' + label + ':', end='')
+
+
+def auto_action(driver, label, find_by, el_type, action, value, sleep_time=0):
+    """
+    Do and automate the selenium actions, interacts with the elements on the browser.
+    """
+    log.debug('Todo action: ', label)
     # Find Element By
     if find_by.lower() == 'id':
         item = driver.find_element(By.ID, el_type)
@@ -41,42 +52,109 @@ def auto_action(label, find_by, el_type, action, value, sleep_time=0):
         item.click()
     else:
         return 0
-    print('\t\tCheck!')
+    log.debug('Action completed ✔️')
     if sleep_time:
         time.sleep(sleep_time)
+        
 
 def start_driver():
+    if not LOCAL_USE and not HUB_ADDRESS:
+        log.debug('Selenium Hub Address not provided, forced Local')
+
     if LOCAL_USE:
-        driver = webdriver.Chrome(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    elif not LOCAL_USE and HUB_ADDRESS:
+        driver = webdriver.Remote(command_executor=HUB_ADDRESS, options=webdriver.ChromeOptions())
     else:
-        driver = webdriver.Remote(
-            command_executor=HUB_ADDRESS,
-            desired_capabilities={'browserName': 'chrome', 'javascriptEnabled': True}
-        )
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     return driver
 
-def login_to_site(driver, username, password):
-    driver.get('URL_DEL_SITIO')  # Reemplaza con la URL del sitio de login
-    auto_action('Ingresando usuario', 'id', 'input_username', 'send', username, 1)
-    auto_action('Ingresando contraseña', 'id', 'input_password', 'send', password, 1)
-    auto_action('Click en botón de inicio', 'id', 'login_button', 'click', '', 2)
+def login_to_site(driver, username:str, password:str, emb:str):
+    URL_LOGIN = get_login_url(emb)
+    REGEX_CONTINUE_BTN_TEXT = get_embassy_vars(emb)['REGEX_CONTINUE_BTN_TEXT']
+    driver.get(URL_LOGIN)
+    time.sleep(STEP_TIME)
+    Wait(driver, SELENIUM_TIMEOUT).until(EC.presence_of_element_located((By.NAME, "commit")))
+    auto_action("Click bounce", "xpath", '//a[@class="down-arrow bounce"]', "click", "", STEP_TIME)
+    auto_action("Entering email", "id", "user_email", "send", username, STEP_TIME)
+    auto_action("Entering password", "id", "user_password", "send", password, STEP_TIME)
+    auto_action("Clicking privacy checkbox", "class", "icheckbox", "click", "", STEP_TIME)
+    auto_action("Clicking login", "name", "commit", "click", "", STEP_TIME)
+    Wait(driver, SELENIUM_TIMEOUT).until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(), '" + REGEX_CONTINUE_BTN_TEXT + "')]")))
 
-def navigate_to_schedule_page(driver):
-    auto_action('Navegando a programación', 'id', 'schedule_nav', 'click', '', 2)
+def get_embassy_dates(driver, emb:str):
+    URL_DATES = get_dates_url(emb)
+    session = driver.get_cookie("_yatri_session")["value"]
+    script = JS_SCRIPT % (str(URL_DATES), session)
+    content = driver.execute_script(script)
+    dates= json.loads(content)
+    log.debug(f'Got {emb} dates:',dates)
+    return dates
 
-def check_available_slots(driver):
-    slots = driver.find_elements(By.XPATH, 'XPATH_DE_LOS_SLOTS')  # Reemplaza con el XPath correcto
-    available_slots = [slot for slot in slots if 'disponible' in slot.text.lower()]
-    return available_slots
+def get_embasy_date_times(driver, emb:str, date):
+    
+    URL_TIMES = get_times_url(emb, date)
+    session = driver.get_cookie("_yatri_session")["value"]
+    script = JS_SCRIPT % (str(URL_TIMES), session)
+    content = driver.execute_script(script)
+    data = json.loads(content)
+    times = data.get("available_times")[-1]
+    log.debug(f"Got {emb} date {date} time successfully:", times)
+    return time
 
-def reschedule_appointment(driver):
-    auto_action('Click en reprogramar', 'id', 'reschedule_button', 'click', '', 2)
-    # Aquí puedes agregar más acciones para completar el proceso de reprogramación
 
-def another_selenium_function(driver):
-    # Ejemplo de otra función
-    pass
 
-def yet_another_selenium_function(driver):
-    # Ejemplo de otra función
-    pass
+def get_available_date(dates):
+    # Evaluation of different available dates
+    def is_in_period(date, PSD, PED):
+        new_date = datetime.strptime(date, "%Y-%m-%d")
+        result = ( PED > new_date and new_date > PSD )
+        # print(f'{new_date.date()} : {result}', end=", ")
+        return result
+    
+    PED = datetime.strptime(PERIOD_END, "%Y-%m-%d")
+    PSD = datetime.strptime(PERIOD_START, "%Y-%m-%d")
+    for d in dates:
+        date = d.get('date')
+        if is_in_period(date, PSD, PED):
+            return date
+    log.debug(f"No available dates between ({PSD.date()}) and ({PED.date()})!")
+    return None
+
+
+def reschedule(driver, emb:str, date:str):
+    time = get_embasy_date_times(date)
+    URL_APPOINTMENT = get_appointment_url(emb)
+    FACILITY_ID = get_embassy_vars(emb)['FACILITY_ID']
+    driver.get(URL_APPOINTMENT)
+
+    headers = {
+        "User-Agent": driver.execute_script("return navigator.userAgent;"),
+        "Referer": URL_APPOINTMENT,
+        "Cookie": "_yatri_session=" + driver.get_cookie("_yatri_session")["value"]
+    }
+
+    data = {
+        "utf8": driver.find_element(by=By.NAME, value='utf8').get_attribute('value'),
+        "authenticity_token": driver.find_element(by=By.NAME, value='authenticity_token').get_attribute('value'),
+        "confirmed_limit_message": driver.find_element(by=By.NAME, value='confirmed_limit_message').get_attribute('value'),
+        "use_consulate_appointment_capacity": driver.find_element(by=By.NAME, value='use_consulate_appointment_capacity').get_attribute('value'),
+        "appointments[consulate_appointment][facility_id]": FACILITY_ID,
+        "appointments[consulate_appointment][date]": date,
+        "appointments[consulate_appointment][time]": time,
+    }
+    r = requests.post(URL_APPOINTMENT, headers=headers, data=data)
+    if(r.text.find('Successfully Scheduled') != -1):
+        title = "SUCCESS"
+        msg = f"Rescheduled Successfully! {date} {time}"
+    else:
+        title = "FAIL"
+        msg = f"Reschedule Failed!!! {date} {time}"
+    return [title, msg]
+
+
+def is_logged_in(driver):
+    content = driver.page_source
+    if(content.find("error") != -1):
+        return False
+    return True
