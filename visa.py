@@ -6,32 +6,98 @@ import traceback
 from utils.logger import Logger
 from datetime import datetime
 
-from config.config_validation import USERNAME, PASSWORD, RETRY_TIME_L_BOUND, RETRY_TIME_U_BOUND, WORK_LIMIT_TIME, WORK_COOLDOWN_TIME, BAN_COOLDOWN_TIME, YOUR_EMBASSIES
+from config.config_validation import USERNAME, PASSWORD, RETRY_TIME_L_BOUND, RETRY_TIME_U_BOUND, WORK_LIMIT_TIME, WORK_COOLDOWN_TIME, BAN_COOLDOWN_TIME, YOUR_EMBASSIES,SCHEDULE_ID
 
 from handlers.notification_handler import send_notification
-from handlers.selenium_handler import start_driver
+from handlers.selenium_handler import start_driver, login_to_site, get_embassy_dates, get_available_date, reschedule
+from utils.visa_utils import info_logger, get_logout_url
+
 
 log = Logger('VISA RESCHEDULER')
 
-log.debug('Reading your embassies...')
 # Time Section:
 minute = 60
 hour = 60 * minute
 
-log.debug('Reading your embassies...')
-log.debug('Reading your embassies...')
-time.sleep(3)
-
-log.debug('Starting selenium driver...')
-time.sleep(3)
+print('Welcome to Visa Rescheduler. Starting selenium driver...')
 driver = start_driver()
-log.debug('Reading your embassies...')
 log.debug('Reading your embassies...')
 embassies = YOUR_EMBASSIES
 log.debug('Embassies: ', YOUR_EMBASSIES)
 
-"""
 
+
+if __name__ == "__main__":
+    is_first_iteration = True
+    embassy_to_use = YOUR_EMBASSIES[0]  # Use only the first embassy for now
+    log.debug(f"Using embassy: {embassy_to_use}")
+    URL_LOGOUT = get_logout_url(embassy_to_use, SCHEDULE_ID)
+    
+    while True:
+        log_file_name = "log_" + str(datetime.now().date()) + ".txt"
+        
+        if is_first_iteration:
+            start_time = time.time()
+            elapsed_time = 0
+            request_count = 0
+            login_to_site(driver, USERNAME, PASSWORD, embassy_to_use)
+            is_first_iteration = False
+        
+        request_count += 1
+        log_message = "-" * 60 + f"\nRequest count: {request_count}, Log time: {datetime.today()}\n"
+        log.debug(log_message)
+        
+        try:
+            available_dates = get_embassy_dates(driver, embassy_to_use)
+            
+            if not available_dates:
+                log_message = f"List is empty, probably banned!\n\tSleeping for {BAN_COOLDOWN_TIME} hours!\n"
+                log.debug(log_message)
+                send_notification("BAN", log_message)
+                driver.get(URL_LOGOUT)
+                time.sleep(BAN_COOLDOWN_TIME * hour)
+                is_first_iteration = True
+            else:
+                log.debug("Available dates: ", available_dates)
+                
+                selected_date = get_available_date(available_dates)
+                
+                if selected_date:
+                    notification_title, log_message = reschedule(selected_date)
+                    break
+                
+                retry_wait_time = random.randint(RETRY_TIME_L_BOUND, RETRY_TIME_U_BOUND)
+                elapsed_time = time.time() - start_time
+                log_message = f"Working Time:  ~ {elapsed_time/minute:.2f} minutes"
+                log.debug(log_message)
+                
+                if elapsed_time > WORK_LIMIT_TIME * hour:
+                    log_message = f"Break-time after {WORK_LIMIT_TIME} hours | Repeated {request_count} times"
+                    send_notification("REST", log_message)
+                    driver.get(URL_LOGOUT)
+                    time.sleep(WORK_COOLDOWN_TIME * hour)
+                    is_first_iteration = True
+                else:
+                    log_message = f"Retry Wait Time: {retry_wait_time} seconds"
+                    log.debug(log_message)
+                    time.sleep(retry_wait_time)
+        except Exception as e:
+            log_message = f"Exception occurred: {str(e)}"
+            log.debug(log_message)
+            traceback.print_exception(*sys.exc_info())
+            notification_title = "EXCEPTION"
+            break
+
+
+log.debug(log_message)
+send_notification(notification_title, log_message)
+driver.get(URL_LOGOUT)
+driver.stop_client()
+driver.quit()
+
+
+
+"""
 
 if __name__ == "__main__":
     first_loop = True

@@ -1,4 +1,5 @@
 
+from datetime import datetime
 from utils.logger import Logger
 from utils.embassy import Embassies
 
@@ -54,3 +55,9 @@ def validate_embassies(embassies:list):
     return False
     
   return True
+
+
+def info_logger(file_path, log):
+    # file_path: e.g. "log.txt"
+    with open(file_path, "a") as file:
+        file.write(str(datetime.now().time()) + ":\n" + log + "\n")

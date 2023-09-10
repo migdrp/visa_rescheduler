@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
 
-from config.config_validation import LOCAL_USE, HUB_ADDRESS, STEP_TIME, SELENIUM_TIMEOUT, PERIOD_END, PERIOD_START
+from config.config_validation import LOCAL_USE, HUB_ADDRESS, STEP_TIME, SELENIUM_TIMEOUT, PERIOD_END, PERIOD_START, SCHEDULE_ID
 from utils.visa_utils import get_login_url, get_appointment_url, get_dates_url, get_times_url, get_logout_url, get_embassy_vars
 from utils.logger import Logger
 
@@ -74,15 +74,15 @@ def login_to_site(driver, username:str, password:str, emb:str):
     driver.get(URL_LOGIN)
     time.sleep(STEP_TIME)
     Wait(driver, SELENIUM_TIMEOUT).until(EC.presence_of_element_located((By.NAME, "commit")))
-    auto_action("Click bounce", "xpath", '//a[@class="down-arrow bounce"]', "click", "", STEP_TIME)
-    auto_action("Entering email", "id", "user_email", "send", username, STEP_TIME)
-    auto_action("Entering password", "id", "user_password", "send", password, STEP_TIME)
-    auto_action("Clicking privacy checkbox", "class", "icheckbox", "click", "", STEP_TIME)
-    auto_action("Clicking login", "name", "commit", "click", "", STEP_TIME)
+    auto_action(driver, "Click bounce", "xpath", '//a[@class="down-arrow bounce"]', "click", "", STEP_TIME)
+    auto_action(driver, "Entering email", "id", "user_email", "send", username, STEP_TIME)
+    auto_action(driver, "Entering password", "id", "user_password", "send", password, STEP_TIME)
+    auto_action(driver, "Clicking privacy checkbox", "class", "icheckbox", "click", "", STEP_TIME)
+    auto_action(driver, "Clicking login", "name", "commit", "click", "", STEP_TIME)
     Wait(driver, SELENIUM_TIMEOUT).until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(), '" + REGEX_CONTINUE_BTN_TEXT + "')]")))
 
 def get_embassy_dates(driver, emb:str):
-    URL_DATES = get_dates_url(emb)
+    URL_DATES = get_dates_url(emb, SCHEDULE_ID)
     session = driver.get_cookie("_yatri_session")["value"]
     script = JS_SCRIPT % (str(URL_DATES), session)
     content = driver.execute_script(script)
@@ -92,7 +92,7 @@ def get_embassy_dates(driver, emb:str):
 
 def get_embasy_date_times(driver, emb:str, date):
     
-    URL_TIMES = get_times_url(emb, date)
+    URL_TIMES = get_times_url(emb, date, SCHEDULE_ID)
     session = driver.get_cookie("_yatri_session")["value"]
     script = JS_SCRIPT % (str(URL_TIMES), session)
     content = driver.execute_script(script)
@@ -123,7 +123,7 @@ def get_available_date(dates):
 
 def reschedule(driver, emb:str, date:str):
     time = get_embasy_date_times(date)
-    URL_APPOINTMENT = get_appointment_url(emb)
+    URL_APPOINTMENT = get_appointment_url(emb, SCHEDULE_ID)
     FACILITY_ID = get_embassy_vars(emb)['FACILITY_ID']
     driver.get(URL_APPOINTMENT)
 
