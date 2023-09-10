@@ -1,25 +1,12 @@
 import time
-import json
 import random
-import requests
-import configparser
 import sys
 import traceback
 
-from utils.loger import Logger
+from utils import Logger
 from datetime import datetime
 
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait as Wait
-from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
-
-
-
-from config.config_validation import ( USERNAME, PASSWORD, PRIOD_START, PRIOD_END, FACILITY_ID,  RETRY_TIME_L_BOUND, RETRY_TIME_U_BOUND, WORK_LIMIT_TIME, WORK_COOLDOWN_TIME, BAN_COOLDOWN_TIME)
-
+from config.config_validation import ( USERNAME, PASSWORD, RETRY_TIME_L_BOUND, RETRY_TIME_U_BOUND, WORK_LIMIT_TIME, WORK_COOLDOWN_TIME, BAN_COOLDOWN_TIME, YOUR_EMBASSIES)
 
 from handlers.notification_handler import send_notification
 from handlers.selenium_handler import start_driver
@@ -29,13 +16,15 @@ log = Logger('VISA RESCHEDULER')
 # Time Section:
 minute = 60
 hour = 60 * minute
-# Time between steps (interactions with forms)
+
 
 
 
 driver = start_driver()
-embassies
+embassies = YOUR_EMBASSIES
+log.debug('Embassies: ', YOUR_EMBASSIES)
 
+"""
 
 
 if __name__ == "__main__":
@@ -109,3 +98,4 @@ send_notification(END_MSG_TITLE, msg)
 driver.get(SIGN_OUT_LINK)
 driver.stop_client()
 driver.quit()
+"""

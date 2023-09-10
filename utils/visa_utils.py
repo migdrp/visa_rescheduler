@@ -1,5 +1,9 @@
-from embassy import *
+from utils.embassy import *
+from utils.logger import Logger
 from config.config_validation import SCHEDULE_ID
+
+
+log = Logger('VISA UTILS')  
 
 
 def get_embassy_vars(emb:str):
@@ -41,10 +45,12 @@ def get_logout_url(emb:str):
 
 def validate_embassies(embassies:list):
   """
-    Verifies that all the YOUR_EMBASSIES have the same EMBASSY param in the embbasies JSON.
+    Verifies that all the YOUR_EMBASSIES have the same EMBASSY param in the embbasy.py
     It must be validated because the URLS must be in the same embassy that logins.
-  
   """
-  for emb in embassies:
-    VARS = get_embassy_vars(emb)
+  embassy_values = [get_embassy_vars(emb)['EMBASSY'] for emb in embassies]
+  if len(set(embassy_values)) != 1:
+    log.debug('All embassies must have the same EMBASSY value.')
+    return False
     
+  return True

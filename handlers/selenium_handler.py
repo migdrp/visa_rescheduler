@@ -13,7 +13,7 @@ from config.config_validation import LOCAL_USE, HUB_ADDRESS, STEP_TIME, SELENIUM
 
 from utils.visa_utils import get_login_url, get_appointment_url, get_dates_url, get_times_url, get_logout_url, get_embassy_vars
 
-from utils.loger import Logger
+from utils.logger import Logger
 
 log = Logger('SELENIUM HANDLER')  
 

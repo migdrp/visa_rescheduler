@@ -1,6 +1,7 @@
 import ast
 import configparser
 from logging import Logger
+from utils.visa_utils import validate_embassies
 
 log = Logger('CONFIG VALIDATION')
 config = configparser.ConfigParser()
@@ -48,6 +49,10 @@ if not PERIOD_START or not PERIOD_END:
 
 if len(YOUR_EMBASSIES) == 0:
     raise ValueError('Please enter at least 1 embassy in the config.')
+
+if not validate_embassies(YOUR_EMBASSIES):
+    raise ValueError('All embassies must have the same EMBASSY value.')
+
 
 if not SENDGRID_API_KEY or not SENDGRID_EMAIL_SENDER or not SENDGRID_TARGET_EMAIL:
     log.error('Email notifications disabled. Please provide your SendGrid credentials.')
