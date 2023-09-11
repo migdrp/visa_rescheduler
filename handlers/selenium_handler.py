@@ -122,7 +122,7 @@ def get_available_date(dates):
 
 
 def reschedule(driver, emb:str, date:str):
-    time = get_embasy_date_times(date)
+    time = get_embasy_date_times(driver, emb, date)
     URL_APPOINTMENT = get_appointment_url(emb, SCHEDULE_ID)
     FACILITY_ID = get_embassy_vars(emb)['FACILITY_ID']
     driver.get(URL_APPOINTMENT)

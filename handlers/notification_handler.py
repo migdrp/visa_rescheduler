@@ -20,7 +20,8 @@ def send_email(title:str, msg:str):
     try:
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
-        log.debug('Email sent: ', response)
+        log.debug(f'Email sent with status code: {response.status_code}, body: {response.body}')
+
     except Exception as ex:
         errorMessage = ex.__str__()
         exc_info = sys.exc_info()
@@ -38,7 +39,8 @@ def send_pushover(title:str, msg:str):
             "title": title,
             "message": msg
         })
-        log.debug('Pushover sent: ', response)
+        log.debug(f'Pushover sent with status code: {response.status_code}, content: {response.content}')
+
         
     except Exception as ex:
         errorMessage = ex.__str__()
