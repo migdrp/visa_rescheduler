@@ -2,14 +2,19 @@ import time
 import random
 import sys
 import traceback
+import os
+
+
+from urllib3.exceptions import ProtocolError
+from selenium.common.exceptions import WebDriverException
 
 from utils.logger import Logger
 from datetime import datetime
 
 from config.config_validation import USERNAME, PASSWORD, RETRY_TIME_L_BOUND, RETRY_TIME_U_BOUND, WORK_LIMIT_TIME, WORK_COOLDOWN_TIME, BAN_COOLDOWN_TIME, YOUR_EMBASSIES,SCHEDULE_ID, STEP_TIME, REQUEST_DATES_TIME
 
-from handlers.notification_handler import send_notification
-from handlers.selenium_handler import start_driver, login_to_site, get_embassy_dates, get_available_date, reschedule
+from handlers.notification_handler import send_notification, send_pushover, send_email
+from handlers.selenium_handler import start_driver, login_to_site, get_embassy_dates, get_available_date, reschedule, SeleniumTimeoutException
 from utils.visa_utils import info_logger, get_logout_url, validate_embassies
 
 
@@ -94,14 +99,23 @@ def run_program(embassies:list, state:str):
                     
                     log.debug(f"GOT DATE!! Embassy {emb} with available date between desired range, trying to reschedule: ", selected_date)
                     notification_title, log_message = reschedule(driver, emb, selected_date)
-                    send_notification(notification_title, log_message)
-                    log.debug(log_message)
-                    driver.get(URL_LOGOUT)
-                    driver.stop_client()
-                    driver.quit()
-                    state = 'LOGGED_OUT'
-                    break
 
+                    if notification_title == "RESCHEDULE SUCCESS":
+
+
+                        send_notification(notification_title, log_message)
+                        log.debug(log_message)
+                        driver.get(URL_LOGOUT)
+                        driver.stop_client()
+                        driver.quit()
+                        state = 'LOGGED_OUT'
+                        break
+                        
+                    elif notification_title == "RESCHEDULE FAIL":
+                        log_message = f"Reschedule fail, retry Wait Time: {REQUEST_DATES_TIME} seconds"
+                        log.debug(log_message)
+                        time.sleep(REQUEST_DATES_TIME)
+                        break
                 
                 else:
 
@@ -143,6 +157,30 @@ if __name__ == "__main__":
         try:
             run_program(embassies, state)
 
+        except SeleniumTimeoutException as ste:
+            error_message = f"Selenium Error encountered: {str(ste)}"
+            send_notification("SELENIUM TIMEOUT ERROR", error_message)
+            log.debug(error_message)
+            os.system("taskkill /f /im chromedriver.exe /T")
+            time.sleep(3)
+            driver = start_driver()
+
+        except ProtocolError:
+            log.debug("Connection was reset after forcibly closing the driver.")
+            time.sleep(3)
+            driver = start_driver()
+
+        except WebDriverException:
+            log.debug("Connection was reset after forcibly closing the driver.")
+            time.sleep(3)
+            driver = start_driver()
+
+
+        except ConnectionResetError:
+            log.debug("Connection was reset after forcibly closing the driver.")
+            time.sleep(3)
+            driver = start_driver()
+
         except Exception as e:
             error_message = f"Error encountered: {str(e)}"
             log.debug(error_message)
@@ -151,4 +189,5 @@ if __name__ == "__main__":
             driver.stop_client()
             driver.quit()
             driver = start_driver()
-            
+        
+        

@@ -1,6 +1,8 @@
 import time
 import json
 import requests
+import threading
+
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -9,6 +11,10 @@ from selenium.webdriver.support.ui import WebDriverWait as Wait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
+
+from selenium.webdriver.chrome.options import Options
+
+
 
 from config.config_validation import LOCAL_USE, HUB_ADDRESS, STEP_TIME, SELENIUM_TIMEOUT, PERIOD_END, PERIOD_START, SCHEDULE_ID
 from utils.visa_utils import get_login_url, get_appointment_url, get_dates_url, get_times_url, get_logout_url, get_embassy_vars
@@ -57,23 +63,33 @@ def auto_action(driver, label, find_by, el_type, action, value, sleep_time=0):
         
 
 def start_driver():
+    chrome_options = Options()
+    chrome_options.page_load_strategy = 'eager'
+
     if not LOCAL_USE and not HUB_ADDRESS:
         log.debug('Selenium Hub Address not provided, forced Local')
 
     if LOCAL_USE:
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+
+
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     elif not LOCAL_USE and HUB_ADDRESS:
-        driver = webdriver.Remote(command_executor=HUB_ADDRESS, options=webdriver.ChromeOptions())
+        driver = webdriver.Remote(command_executor=HUB_ADDRESS, options=chrome_options)
     else:
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     return driver
 
 def login_to_site(driver, username:str, password:str, emb:str):
     URL_LOGIN = get_login_url(emb)
     REGEX_CONTINUE_BTN_TEXT = get_embassy_vars(emb)['REGEX_CONTINUE_BTN_TEXT']
-    driver.get(URL_LOGIN)
+    log.debug('Going to login URL')
+    #driver.get(URL_LOGIN)
+    get_with_timeout(driver, URL_LOGIN, SELENIUM_TIMEOUT)  # Setting a 30 seconds timeout
+
+    log.debug('login URL got')
     time.sleep(STEP_TIME)
     Wait(driver, SELENIUM_TIMEOUT).until(EC.presence_of_element_located((By.NAME, "commit")))
+    log.debug('Wait completed')
     auto_action(driver, "Click bounce", "xpath", '//a[@class="down-arrow bounce"]', "click", "", STEP_TIME)
     auto_action(driver, "Entering email", "id", "user_email", "send", username, STEP_TIME)
     auto_action(driver, "Entering password", "id", "user_password", "send", password, STEP_TIME)
@@ -123,6 +139,7 @@ def get_available_date(dates):
 
 def reschedule(driver, emb:str, date:str):
     time = get_embasy_date_times(driver, emb, date)
+
     URL_APPOINTMENT = get_appointment_url(emb, SCHEDULE_ID)
     FACILITY_ID = get_embassy_vars(emb)['FACILITY_ID']
     driver.get(URL_APPOINTMENT)
@@ -143,6 +160,9 @@ def reschedule(driver, emb:str, date:str):
         "appointments[consulate_appointment][time]": time,
     }
     r = requests.post(URL_APPOINTMENT, headers=headers, data=data)
+    
+    log.debug(f'Reschedule response: {r.status_code}, content: {r.content}')
+
     if(r.text.find('Successfully Scheduled') != -1):
         title = "SUCCESS"
         msg = f"Rescheduled Successfully! {date} {time}"
@@ -157,3 +177,21 @@ def is_logged_in(driver):
     if(content.find("error") != -1):
         return False
     return True
+
+
+
+def get_with_timeout(driver, url, timeout):
+    event = threading.Event()
+    def worker():
+        driver.get(url)
+        event.set()
+    thread = threading.Thread(target=worker)
+    thread.start()
+    event.wait(timeout)
+    if not event.is_set():
+        raise SeleniumTimeoutException(f"Timed out after {timeout} seconds while loading {url}")
+    
+
+
+class SeleniumTimeoutException(Exception):
+    pass

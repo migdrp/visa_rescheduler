@@ -20,13 +20,14 @@ def send_email(title:str, msg:str):
     try:
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
-        log.debug(f'Email sent with status code: {response.status_code}, body: {response.body}')
+        #log.debug(f'Email sent with status code: {response.status_code}, body: {response.body}')
 
     except Exception as ex:
         errorMessage = ex.__str__()
         exc_info = sys.exc_info()
         traceback.print_exception(*exc_info)
-        log.debug('Error sending email: ', errorMessage)
+        raise ex
+        #log.debug('Error sending email: ', errorMessage)
 
 def send_pushover(title:str, msg:str):
     if not PUSHOVER_TOKEN or not PUSHOVER_USER:
@@ -39,16 +40,18 @@ def send_pushover(title:str, msg:str):
             "title": title,
             "message": msg
         })
-        log.debug(f'Pushover sent with status code: {response.status_code}, content: {response.content}')
+        #log.debug(f'Pushover sent with status code: {response.status_code}, content: {response.content}')
 
         
     except Exception as ex:
         errorMessage = ex.__str__()
         exc_info = sys.exc_info()
         traceback.print_exception(*exc_info)
-        log.debug('Error sending pushover: ', errorMessage)
+        raise ex
+        #log.debug('Error sending pushover: ', errorMessage)
 
 
 def send_notification(title:str, msg:str):
+    log.debug(f'Notification sent: {title}, content: {msg}')
     send_email(title,msg)
     send_pushover(title,msg)
