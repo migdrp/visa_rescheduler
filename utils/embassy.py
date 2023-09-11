@@ -12,5 +12,12 @@ Embassies = {
     "en-ca-van": ["en-ca", 95, "Continue"], # English - Canada - Vancouver
     "es-mx-cdmx": ["es-mx", 70, "Continuar"], # Spanish - México - México City
     "es-mx-mty": ["es-mx", 71, "Continuar"], # Spanish - México - Monterrey
-    "es-mx-guad": ["es-mx", 66, "Continuar"] # Spanish - México - Guadalajara
+    "es-mx-guad": ["es-mx", 66, "Continuar"], # Spanish - México - Guadalajara
+    "es-mx-cjuarez": ["es-mx", 65, "Continuar"],
+    "es-mx-hermosillo": ["es-mx", 67, "Continuar"],
+    "es-mx-matamoros": ["es-mx", 68, "Continuar"],
+    "es-mx-merida": ["es-mx", 69, "Continuar"],
+    "es-mx-nogales": ["es-mx", 72, "Continuar"],
+    "es-mx-nuevolaredo": ["es-mx", 73, "Continuar"],
+    "es-mx-tijuana": ["es-mx", 74, "Continuar"]
 }

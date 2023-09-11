@@ -6,7 +6,7 @@ import traceback
 from utils.logger import Logger
 from datetime import datetime
 
-from config.config_validation import USERNAME, PASSWORD, RETRY_TIME_L_BOUND, RETRY_TIME_U_BOUND, WORK_LIMIT_TIME, WORK_COOLDOWN_TIME, BAN_COOLDOWN_TIME, YOUR_EMBASSIES,SCHEDULE_ID, STEP_TIME
+from config.config_validation import USERNAME, PASSWORD, RETRY_TIME_L_BOUND, RETRY_TIME_U_BOUND, WORK_LIMIT_TIME, WORK_COOLDOWN_TIME, BAN_COOLDOWN_TIME, YOUR_EMBASSIES,SCHEDULE_ID, STEP_TIME, REQUEST_DATES_TIME
 
 from handlers.notification_handler import send_notification
 from handlers.selenium_handler import start_driver, login_to_site, get_embassy_dates, get_available_date, reschedule
@@ -25,9 +25,7 @@ hour = 60 * minute
 
 
     
-def run_program(embassies:list):
-    state = 'LOGGED_OUT'
-
+def run_program(embassies:list, state:str):
 
     if not validate_embassies(embassies): 
         raise ValueError('Not valid multiple embassies, all embassies must share the same login site')
@@ -51,27 +49,28 @@ def run_program(embassies:list):
             log.debug(f"Checking {emb} embassy dates.")
             emb_available_dates = get_embassy_dates(driver, emb)
 
-            if not emb_available_dates and idx < len(embassies):
+            if not emb_available_dates and idx < len(embassies) - 1:
                 log.debug(f"Embassy {emb} without dates, checking another one!")
-                time.sleep(STEP_TIME)
+                time.sleep(REQUEST_DATES_TIME)
                 continue
 
-            elif not emb_available_dates and idx == len(embassies):
-                log.debug(f"All embassies dates are empty, probably not enabled yet on your embsassies!  Sleeping for {BAN_COOLDOWN_TIME} hours!")
+            elif not emb_available_dates and idx == len(embassies) - 1:
+                log_message = f"All embassies dates are empty, probably not enabled yet on your embsassies!  Sleeping for {BAN_COOLDOWN_TIME} hours!"
+                log.debug(log_message)
                 send_notification("ALL EMBASSIES WITHOUT DATES", log_message)
                 driver.get(URL_LOGOUT)
                 time.sleep(BAN_COOLDOWN_TIME * hour)
                 state = 'LOGGED_OUT'
-                time.sleep(STEP_TIME)
+                break
 
             
-            elif emb_available_dates and idx < len(embassies): 
-                log.debug("Embassy {emb} with available dates: ", emb_available_dates)
+            elif emb_available_dates and idx < len(embassies) - 1: 
+                log.debug(f"Embassy {emb} with available dates: ", emb_available_dates)
                 selected_date = get_available_date(emb_available_dates)
 
                 if selected_date:
                     
-                    log.debug("Embassy {emb} with available date between desired range, trying to reschedule: ", selected_date)
+                    log.debug(f"GOT DATE!! Embassy {emb} with available date between desired range, trying to reschedule: ", selected_date)
                     notification_title, log_message = reschedule(driver, emb, selected_date)
                     send_notification(notification_title, log_message)
                     log.debug(log_message)
@@ -79,19 +78,21 @@ def run_program(embassies:list):
                     driver.stop_client()
                     driver.quit()
                     state = 'LOGGED_OUT'
-                    time.sleep(STEP_TIME)
+                    time.sleep(REQUEST_DATES_TIME)
                     break
 
                 else:
-                    log.debug("Embassy {emb} without available date between desired range, trying to reschedule: ", selected_date)
-                    time.sleep(STEP_TIME)
+                    log.debug(f"Embassy {emb} without available date between desired range, trying another embassy ", selected_date)
+                    time.sleep(REQUEST_DATES_TIME)
                     continue
             
-            elif emb_available_dates and idx == len(embassies): 
+            elif emb_available_dates and idx == len(embassies) - 1: 
+                log.debug(f"Embassy {emb} with available dates: ", emb_available_dates)
+                selected_date = get_available_date(emb_available_dates)
 
                 if selected_date:
                     
-                    log.debug("Embassy {emb} with available date between desired range, trying to reschedule: ", selected_date)
+                    log.debug(f"GOT DATE!! Embassy {emb} with available date between desired range, trying to reschedule: ", selected_date)
                     notification_title, log_message = reschedule(driver, emb, selected_date)
                     send_notification(notification_title, log_message)
                     log.debug(log_message)
@@ -99,7 +100,6 @@ def run_program(embassies:list):
                     driver.stop_client()
                     driver.quit()
                     state = 'LOGGED_OUT'
-                    time.sleep(STEP_TIME)
                     break
 
                 
@@ -116,32 +116,32 @@ def run_program(embassies:list):
                         driver.get(URL_LOGOUT)
                         time.sleep(WORK_COOLDOWN_TIME * hour)
                         state = 'LOGGED_OUT'
-                        time.sleep(STEP_TIME)
+                        break
                     else:
                         log_message = f"Retry Wait Time: {retry_wait_time} seconds"
                         log.debug(log_message)
                         time.sleep(retry_wait_time)
+                        
 
             else:
+                log_message = f"Retry Wait Time: {retry_wait_time} seconds"
                 log.debug(log_message)
-                driver.get(URL_LOGOUT)
-                driver.stop_client()
-                driver.quit()
-                state = 'LOGGED_OUT'
-                time.sleep(STEP_TIME)
+                time.sleep(retry_wait_time)
+                
 
-
+       
 
 if __name__ == "__main__":
+    log.debug('Welcome to Visa Rescheduler. Starting selenium driver...')
+    driver = start_driver()
+    log.debug('Reading your embassies...')
+    embassies = YOUR_EMBASSIES
+    log.debug('Embassies: ', YOUR_EMBASSIES)
+    URL_LOGOUT = get_logout_url(YOUR_EMBASSIES[0], SCHEDULE_ID)
+    state = 'LOGGED_OUT'
     while True:
-        log.debug('Welcome to Visa Rescheduler. Starting selenium driver...')
-        driver = start_driver()
-        log.debug('Reading your embassies...')
-        embassies = YOUR_EMBASSIES
-        log.debug('Embassies: ', YOUR_EMBASSIES)
-        URL_LOGOUT = get_logout_url(YOUR_EMBASSIES[0], SCHEDULE_ID)
         try:
-            run_program(embassies)
+            run_program(embassies, state)
 
         except Exception as e:
             error_message = f"Error encountered: {str(e)}"
@@ -150,4 +150,5 @@ if __name__ == "__main__":
             driver.get(URL_LOGOUT)
             driver.stop_client()
             driver.quit()
+            driver = start_driver()
             
